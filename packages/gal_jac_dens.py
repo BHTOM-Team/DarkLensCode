@@ -18,19 +18,29 @@ KK notes: In Batista et al. 2011: bulge spans form 5kpc<=d<=11kpc
 import numpy as np
 from packages.const import DISTANCE_GC, V_ROT, U_SUN_LSR, V_SUN_LSR, W_SUN_LSR, RA_GAL_N, DEC_GAL_N, L_EQ_N
 
-'''
-========================================================================
-dens_prob_bulge(dist, gall, galb)
-========================================================================
-Returns probability of finding star in a given direction in the Galactic
-disc.
-Comes from Batista et al. 2011
-------------------------------------------------------------------------
-Input:
-dist -- distance to the object
-gl, gb -- galactic longtitude and latitude
-'''
+
+def V(r):
+    '''
+    Args:
+        r: distance to the object
+
+    Returns:
+        Radial velocity in the Milky Way, from Mroz et al 2019 (model 2)
+    '''
+    return V_ROT - 1.34 * (r - DISTANCE_GC)  # note that significant changes only very close to GC or very far from GC
+
 def dens_prob_disc(dist, gall, galb):
+    '''
+    Returns probability of finding star in a given direction in the Galactic disc.
+    Comes from Batista et al. 2011
+    Args:
+        dist: distance to the object
+        gall: galactic longtitude
+        galb: galactic latitude
+
+    Returns:
+        Returns probability of finding star in a given direction in the Galactic disc.
+    '''
     xg = DISTANCE_GC - dist * np.cos(gall) * np.cos(galb)
     yg = dist * np.sin(gall) * np.cos(galb)
     zg = dist * np.sin(galb)
@@ -46,19 +56,18 @@ def dens_prob_disc(dist, gall, galb):
 
     return densprob
 
-'''
-========================================================================
-dens_prob_bulge(dist, gall, galb)
-========================================================================
-Returns probability of finding star in a given direction in the Galactic
-bulge.
-Comes from Batista et al. 2011
-------------------------------------------------------------------------
-Input:
-dist -- distance to the object
-gl, gb -- galactic longtitude and latitude
-'''
 def dens_prob_bulge(dist, gall, galb):
+    '''
+    Returns probability of finding star in a given direction in the Galactic bulge.
+    Comes from Batista et al. 2011
+    Args:
+        dist: distance to the object
+        gall: galactic longtitude
+        galb: galactic latitude
+
+    Returns:
+        Returns probability of finding star in a given direction in the Galactic bulge.
+    '''
     xg = DISTANCE_GC - dist * np.cos(gall) * np.cos(galb)
     yg = dist * np.sin(gall) * np.cos(galb)
     zg = dist * np.sin(galb)
@@ -80,6 +89,175 @@ def dens_prob_bulge(dist, gall, galb):
 
     return densprob
 
+def get_source_pm(gl, gb, dist):
+    '''
+    This function returns the proper motion of the source
+    depenting on its location in the Milky Way.
+    Args:
+        gl: galactic longitude
+        gb: galactic latitude
+        dist_s: distance to the source
+
+    Returns: Source's proper motion and its dispersion in galactic coordinates.
+    '''
+    # if we are looking at bulge, we assume that the source is in bulge
+    # proper motions consistent with Schoenrich et al 2010
+    # See: Mróz, Udalski et al. 2022 - section: Proper Motions
+    if (gl > 350. or gl < 10.):
+        mu_sl = -6.12
+        mu_sb = -0.19
+        sig_mu_sl = sig_mu_sb = 2.64
+    else:  # source is in galactic disc
+        mu_sl, mu_sb, sig_mu_sl, sig_mu_sb = get_galactic_pm(gl, gb, dist)
+
+    return mu_sl, mu_sb, sig_mu_sl, sig_mu_sb
+
+def get_galactic_pm(gl, gb, dist):
+    '''
+    This function calculates the proper motion an object has in the Milky Way.
+    Args:
+        gl: galactic longtitude
+        gb: galactic latutitude
+        dist: distance from us to the object
+
+    Returns:
+        Proper motion and its dispersion in Galactic coordinates.
+    '''
+    VRo = V_ROT  # in km/s, from Mroz+ 2019, ,odel 2 without prior, close to IAU value of 220
+    Ro = DISTANCE_GC  # in kpc, distance to GC from GRAVITY
+    U_sun, V_sun, W_sun = U_SUN_LSR, V_SUN_LSR, W_SUN_LSR  # from Schoenberg 2010
+    # from Mroz et al. 2019 (for model 2, with prior)
+
+    gall = np.deg2rad(gl)
+    galb = np.deg2rad(gb)
+
+    pi = 1./ dist
+    Dp = dist * np.cos(galb)
+    Rp = np.sqrt(Ro ** 2 + Dp ** 2 - (2. * Dp * Ro * np.cos(gall)))
+    sinbeta = Dp * np.sin(gall) / Rp
+    cosbeta = (Ro - Dp * np.cos(gall)) / Rp
+    beta = np.arctan2(sinbeta, cosbeta)  # angle Sun-galactic center-lens, check figure in Reid et al 2009
+    R = np.sqrt(Rp ** 2 + (dist * np.sin(galb)) ** 2)  # distance from GC to lens
+
+    # We are correcting the movement of the lens for the movement of the Sun and Earth later on, so I do not subtract
+    U_1 = V(R) * np.sin(beta) - U_sun
+    V_1 = V(R) * np.cos(beta) - VRo - V_sun
+    W_1 = (-1.) * W_sun
+    vd_1 = W_1 * np.cos(galb) - (U_1 * np.cos(gall) + V_1 * np.sin(gall)) * np.sin(galb)  # galb
+    vd_2 = V_1 * np.cos(gall) - U_1 * np.sin(gall)  # as in Mroz #gall
+    mu_b = (vd_1 * pi / 4.74)
+    mu_l = (vd_2 * pi / 4.74)
+    # expected dispersion in disk velocities
+    svs_1 = 20.
+    svs_2 = 30.  # as in Mroz
+    sig_mu_b = svs_1 * pi / 4.74
+    sig_mu_l = svs_2 * pi / 4.74
+
+    return mu_l, mu_b, sig_mu_l, sig_mu_b
+
+def prob_mu_disc(murel, dist_lens, dist_source,
+                 pien, piee, piE,
+                 mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
+                 ra, dec, gl, gb,
+                 mus_weight):
+    '''
+    This function returns the probability of getting relative proper motion
+    with value murel between the source at a distance of dist_source and
+    lens belongs to the Galactic disc at a distance dist_lens.
+    The probability is split into two components:
+    along the Galactic longtitude and latitude.
+    '''
+
+    # proper motions in (l, b) for the source
+    if (not mus_weight):
+        mu_sl, mu_sb, sig_mu_sl, sig_mu_sb = eq_pm_to_gal_pm(mu_ra, mu_dec,
+                                                     sig_mu_ra, sig_mu_dec, pm_corr,
+                                                     ra, dec)
+    else:
+        # souce proper motion
+        mu_sl, mu_sb, sig_mu_sl, sig_mu_sb = get_source_pm(gl, gb, dist_source)
+
+    mu_ll, mu_lb, sig_mu_ll, sig_mu_lb = get_galactic_pm(gl, gb, dist_lens)
+
+    # angle between North Pole in eqatorial coordinates, lens and
+    # Galactic north pole; used to find north and east galactic components
+    # of murel (check if this is really needed????)
+    northPA = calculate_north_PA(ra, dec, gl, gb)
+    # northPA = np.deg2rad(60.) # old, wrong value, left, becasue new procedure has not yet been properly teste
+
+    # now the proper motions should be in the same frame
+    # relative proper motion we expect (difference of geocentric PMs) in the disk
+    mu_exp_1 = mu_lb - mu_sb  # in AU/yr/kpc = mas/yr , gal b
+    mu_exp_2 = mu_ll - mu_sl  # in AU/yr/kpc = mas/yr , gal l
+
+    # relative proper motion dispersion we expect in the disk
+    smu_exp_1 = np.sqrt(sig_mu_lb ** 2 + sig_mu_sb ** 2)  # in mas/yr, in gal b
+    smu_exp_2 = np.sqrt(sig_mu_ll ** 2 + sig_mu_sl ** 2)  # in mas/yr, in gal l
+
+    # relative proper motion we see
+    mu_len = murel
+    # spliting to N and E components along piE vector (geo)
+    mu_l_1 = mu_len * (pien * np.cos(northPA) - piee * np.sin(northPA)) / piE  # north galactic component in mas/yr
+    mu_l_2 = mu_len * (pien * np.sin(northPA) + piee * np.cos(northPA)) / piE  # east  galactic component in mas/yr
+
+    # probability of given proper motion, disk
+    fmu_d1 = np.exp(-(mu_exp_1 - mu_l_1) ** 2 / (2. * smu_exp_1 ** 2)) / smu_exp_1  # prob disk
+    fmu_d2 = np.exp(-(mu_exp_2 - mu_l_2) ** 2 / (2. * smu_exp_2 ** 2)) / smu_exp_2  #
+
+    return fmu_d1, fmu_d2
+
+def prob_mu_bulge(murel, dist_len, dist_source,
+                  pien, piee, piE,
+                  mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
+                  ra, dec, gl, gb,
+                  mus_weight):
+    '''
+    This function returns the probability of getting relative proper motion
+    with value murel between the source at a distance of dist_source and
+    lens belongs to the Galactic bulge at a distance dist_lens.
+    The probability is split into two components:
+    along the Galactic longtitude and latitude.
+    '''
+    U_sun, V_sun, W_sun = U_SUN_LSR, V_SUN_LSR, W_SUN_LSR  # from Schoenberg 2010
+    northPA = calculate_north_PA(ra, dec, gl, gb)
+    pil = 1. / dist_len
+
+    # proper motions in (l, b) for the source
+    if (not mus_weight):
+        mu_sl, mu_sb, sig_mu_sl, sig_mu_sb = eq_pm_to_gal_pm(mu_ra, mu_dec,
+                                                     sig_mu_ra, sig_mu_dec, pm_corr,
+                                                     ra, dec, gl, gb, )
+    else:
+        # souce proper motion
+        mu_sl, mu_sb, sig_mu_sl, sig_mu_sb = get_source_pm(gl, gb, dist_source)
+
+    # expected bulge source velocities
+    # gal l and gal b close to 0 => beta = 0
+    vb_1 = (-1.) * W_sun  # 0. #galb
+    vb_2 = (-1) * V_sun  # vrot canceles out #as in Mroz #gall
+    # expected dispersion in disk velocities, as in Mroz
+    svb_1 = 100.
+    svb_2 = 100.  # bulge motions are quite random
+
+    # relative proper motion we expect in the bulge
+    mu_exp_b1 = (vb_1 * pil / 4.74) - mu_sb  # in AU/yr/kpc = mas/yr , gal b
+    mu_exp_b2 = (vb_2 * pil / 4.74) - mu_sl  # in AU/yr/kpc = mas/yr , gal l
+
+    # relative proper motion dispersion we expect in the bulge
+    smu_exp_b1 = np.sqrt((svb_1 * pil / 4.74) ** 2 + sig_mu_sb ** 2)  # in mas/yr, in gal b
+    smu_exp_b2 = np.sqrt((svb_2 * pil / 4.74) ** 2 + sig_mu_sl ** 2)  # in mas/yr, in gal l
+
+    # relative proper motion we see
+    mu_len = murel
+    # spliting to N and E components along piE vector (geo)
+    mu_l_1 = mu_len * (pien * np.cos(northPA) - piee * np.sin(northPA)) / piE  # north galactic component in mas/yr
+    mu_l_2 = mu_len * (pien * np.sin(northPA) + piee * np.cos(northPA)) / piE  # east  galactic component in mas/yr
+
+    # probability of given proper motion, bulge and disk added
+    fmu_b1 = np.exp(-(mu_exp_b1 - mu_l_1) ** 2 / (2. * smu_exp_b1 ** 2)) / smu_exp_b1  # prob bulge
+    fmu_b2 = np.exp(-(mu_exp_b2 - mu_l_2) ** 2 / (2. * smu_exp_b2 ** 2)) / smu_exp_b2  #
+
+    return fmu_b1, fmu_b2
 
 # input: murel_helio (random), te_helio, piEN_helio, piEE_helio (converted to the heliocentric reference frame), all heliocentric, equatorial
 # mura, mudec - original Gaia heliocentric, equatorial, will be converted to geo, gal
@@ -106,111 +284,66 @@ sig_mu_ra, sig_mu_dec -- proper motions errors (from Gaia catalog)
 pm_corr -- correlation between  proper motions in ra and dec (from Gaia catalog)
 ds_weight -- boolean argument, if True, the properties of the source are also weighted by the galactic model
 '''
-def get_gal_jac_gaia(mass, dist_lens, dist_source, piE, ra, dec, pien, piee, murel, te, gl, gb, masspower, mu_ra,
-                     mu_dec, sig_mu_ra, sig_mu_dec, pm_corr, ds_weight):
-    VRo = V_ROT  # in km/s, from Mroz+ 2019, ,odel 2 without prior, close to IAU value of 220
-    Ro = DISTANCE_GC  # in kpc, distance to GC from GRAVITY
-    U_sun, V_sun, W_sun = U_SUN_LSR, V_SUN_LSR, W_SUN_LSR #from Schoenberg 2010
-    # from Mroz et al. 2019 (for model 2, with prior)
+def get_gal_jac_gaia(mass, dist_lens, dist_source,
+                     piE, ra, dec, pien, piee,
+                     murel, te, gl, gb,
+                     masspower,
+                     mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
+                     ds_weight):
+    '''
 
-    # lens and source distances
-    pil = 1 / dist_lens
+    Args:
+        mass: mass of the lens
+        dist_lens, dist_source: distance to the lens and the source
+        piE: microlensing parallax of the event
+        ra, dec: equatorial coordinates of the event, in degrees
+        pien, piee: N and E microlensing parallax components
+        murel: source and lens relative proper motion
+        te: Einstein timescale of the event
+        gl, gb: galactic latutde and longtitude
+        masspower:
+        mu_ra:
+        mu_dec:
+        sig_mu_ra:
+        sig_mu_dec:
+        pm_corr:
+        ds_weight:
 
-    def V(r):  # for lens, radial velocity depends on the distance, from Mroz et al 2019 (model 2)
-        return VRo - 1.34 * (r - Ro)  # note that significant changes only very close to GC or very far from GC
+    Returns:
 
-    gall = np.deg2rad(gl)
-    galb = np.deg2rad(gb)
+    '''
 
-    # proper mootions in (l, b) for the source
-    pm_l, pm_b, pm_l_err, pm_b_err = eqPMtogalPM(mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr, ra, dec, gl, gb,)
-    
-    mu_sl = pm_l
-    mu_sb = pm_b
-    sig_mu_sl = pm_l_err
-    sig_mu_sb = pm_b_err
+    fmu_b1, fmu_b2 =  prob_mu_bulge(murel, dist_len, dist_source,
+                                    pien, piee, piE,
+                                    mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
+                                    ra, dec, gl, gb,
+                                    mus_weight)
 
-    # calculating proper motions for the lens
-    # two options, the lens is either in the bulge or in the disk
-    # calculating velocities for both
-    # based on PMroz comments, Mroz et al 2019 + Reid et al 2009
-    # calculating Dp and Rp to get beta
-    Dp = dist_lens * np.cos(galb)
-    Rp = np.sqrt(Ro ** 2 + Dp ** 2 - (2. * Dp * Ro * np.cos(gall)))
-    sinbeta = Dp * np.sin(gall) / Rp
-    cosbeta = (Ro - Dp * np.cos(gall)) / Rp
-    beta = np.arctan2(sinbeta, cosbeta)  # angle Sun-galactic center-lens, check figure in Reid et al 2009
-    R = np.sqrt(Rp ** 2 + (dist_lens * np.sin(galb)) ** 2)  # distance from GC to lens
-    # We are correcting the movement of the lens for the movement of the Sun and Earth later on, so I do not subtract
-    U_1 = V(R) * np.sin(beta) - U_sun
-    V_1 = V(R) * np.cos(beta) - VRo - V_sun
-    W_1 = (-1.) * W_sun
-
-    # if the lens is in the disk
-    # expected thick disk velocities
-    vd_1 = W_1 * np.cos(galb) - (U_1 * np.cos(gall) + V_1 * np.sin(gall)) * np.sin(galb)  # galb
-    vd_2 = V_1 * np.cos(gall) - U_1 * np.sin(gall)  # as in Mroz #gall
-    # expected dispersion in disk velocities
-    svd_1 = 20.
-    svd_2 = 30.  # as in Mroz
-
-    # expected bulge source velocities
-    # gal l and gal b close to 0 => beta = 0
-    vb_1 = (-1.) * W_sun  # 0. #galb
-    vb_2 = (-1) * V_sun  # vrot canceles out #as in Mroz #gall
-    # expected dispersion in disk velocities, as in Mroz
-    svb_1 = 100.
-    svb_2 = 100.  # bulge motions are quite random
-
-    # angle between North Pole in eqatorial coordinates, lens and
-    # Galactic north pole; used to find north and east galactic components 
-    # of murel (check if this is really needed????)
-    northPA = calculateNorthPA(ra, dec, gl, gb)
-    # northPA = np.deg2rad(60.) # old, wrong value, left, becasue new procedure has not yet been properly teste
-
-    # now the proper motions should be in the same frame
-    # relative proper motion we expect (difference of geocentric PMs) in the disk
-    mu_exp_1 = (vd_1 * pil / 4.74) - mu_sb  # in AU/yr/kpc = mas/yr , gal b
-    mu_exp_2 = (vd_2 * pil / 4.74) - mu_sl  # in AU/yr/kpc = mas/yr , gal l
-
-    # relative proper motion we expect in the bulge
-    mu_exp_b1 = (vb_1 * pil / 4.74) - mu_sb  # in AU/yr/kpc = mas/yr , gal b
-    mu_exp_b2 = (vb_2 * pil / 4.74) - mu_sl  # in AU/yr/kpc = mas/yr , gal l
-
-    # relative proper motion dispersion we expect in the disk
-    smu_exp_1 = np.sqrt((svd_1 * pil / 4.74) ** 2 + sig_mu_sb ** 2)  # in mas/yr, in gal b
-    smu_exp_2 = np.sqrt((svd_2 * pil / 4.74) ** 2 + sig_mu_sl ** 2)  # in mas/yr, in gal l
-    # relative proper motion dispersion we expect in the bulge
-    smu_exp_b1 = np.sqrt((svb_1 * pil / 4.74) ** 2 + sig_mu_sb ** 2)  # in mas/yr, in gal b
-    smu_exp_b2 = np.sqrt((svb_2 * pil / 4.74) ** 2 + sig_mu_sl ** 2)  # in mas/yr, in gal l
-
-    # relative proper motion we see
-    mu_len = murel
-    # spliting to N and E components along piE vector (geo)
-    mu_l_1 = mu_len * (pien * np.cos(northPA) - piee * np.sin(northPA)) / piE  # north galactic component in mas/yr
-    mu_l_2 = mu_len * (pien * np.sin(northPA) + piee * np.cos(northPA)) / piE  # east  galactic component in mas/yr
-
-    # probability of given proper motion, bulge and disk added
-    fmu_b1 = np.exp(-(mu_exp_b1 - mu_l_1) ** 2 / (2. * smu_exp_b1 ** 2)) / smu_exp_b1  # prob bulge
-    fmu_b2 = np.exp(-(mu_exp_b2 - mu_l_2) ** 2 / (2. * smu_exp_b2 ** 2)) / smu_exp_b2  #
-    fmu_d1 = np.exp(-(mu_exp_1 - mu_l_1) ** 2 / (2. * smu_exp_1 ** 2)) / smu_exp_1  # prob disk
-    fmu_d2 = np.exp(-(mu_exp_2 - mu_l_2) ** 2 / (2. * smu_exp_2 ** 2)) / smu_exp_2  #
+    fmu_d1, fmu_d2 = prob_mu_disc(murel, dist_len, dist_source,
+                                  pien, piee, piE,
+                                  mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
+                                  ra, dec, gl, gb,
+                                  mus_weight)
 
     # --------------------------------------------
     # very simple mass function weighting assumed here
+    # KK: modified to use a more sophisticated mass-function
     mass_function = 1. / (mass ** masspower)
     # --------------------------------------------
     # TOTAL + JACOBIAN
     czlon = (mass_function * mass) * (dist_lens ** 4) * (
             murel ** 4) * te / piE  # *te ze zmiany zmiennej w jakobianie (thetaE na mu)
     # --------------------------------------------
+
     # DENSITY #edited to match Mroz 2021 notes
     densprob_d = dens_prob_disc(dist_lens, gall, galb)
     gal_jac_d = 1.e1 * densprob_d * fmu_d1 * fmu_d2 * czlon
+
     # DENS BULGE + NORMALIZATION bulge-disk
     densprob_b = dens_prob_bulge(dist_lens, gall, galb)
     gal_jac_b = 1.e1 * densprob_b * fmu_b1 * fmu_b2 * czlon
     gal_jac = max(gal_jac_b, gal_jac_d)
+
     if ds_weight:
         densprob_d_source = dens_prob_disc(dist_source, gall, galb)
         densprob_b_source = dens_prob_bulge(dist_source, gall, galb)
@@ -246,7 +379,7 @@ ra, dec -- equatorial coordinates of a source with given proper motions
 l, b -- galactic coordinates of a source with given proper motions
 pm_corr -- correlation betwen mu_ra and mu_dec, from Gaia catalogue
 '''
-def eqPMtogalPM(mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr, ra, dec, l, b,):
+def eqPMtogalPM(mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr, ra, dec):
     # converting proper motions od the source to galactocentric frame
     # following Reid et al. 2009 and Mroz et al. 2019
     # 1) convert proper motions to mu_l, mu_b, from
