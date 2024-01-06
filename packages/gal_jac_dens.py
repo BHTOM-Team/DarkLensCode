@@ -102,8 +102,17 @@ def get_source_pm(gl, gb, dist):
     '''
     # if we are looking at bulge, we assume that the source is in bulge
     # proper motions consistent with Schoenrich et al 2010
-    # See: Mróz, Udalski et al. 2022 - section: Proper Motions
-    if (gl > 350. or gl < 10.):
+    # See: Mróz, Udalski et al. 2021 - section: 2.2 Proper Motions (https://ui.adsabs.harvard.edu/abs/2021arXiv210713697M/abstract)
+    # I assume that stars within 2.4 kpc from bulge belong to it
+    # Anything further away belongs to galactic disc. (See: Dweck et al. 1995, 1995ApJ...445..716D)
+    Ro = DISTANCE_GC
+    gall = np.deg2rad(gl)
+    galb = np.deg2rad(gb)
+
+    Dp = dist * np.cos(galb)
+    Rp = np.sqrt(Ro ** 2 + Dp ** 2 - (2. * Dp * Ro * np.cos(gall)))
+
+    if ((gl > 350. or gl < 10.) and Rp < 2.4):
         mu_sl = -6.12
         mu_sb = -0.19
         sig_mu_sl = sig_mu_sb = 2.64
@@ -206,7 +215,7 @@ def prob_mu_disc(murel, dist_lens, dist_source,
 
     return fmu_d1, fmu_d2
 
-def prob_mu_bulge(murel, dist_len, dist_source,
+def prob_mu_bulge(murel, dist_lens, dist_source,
                   pien, piee, piE,
                   mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
                   ra, dec, gl, gb,
@@ -220,13 +229,13 @@ def prob_mu_bulge(murel, dist_len, dist_source,
     '''
     U_sun, V_sun, W_sun = U_SUN_LSR, V_SUN_LSR, W_SUN_LSR  # from Schoenberg 2010
     northPA = calculate_north_PA(ra, dec, gl, gb)
-    pil = 1. / dist_len
+    pil = 1. / dist_lens
 
     # proper motions in (l, b) for the source
     if (not mus_weight):
         mu_sl, mu_sb, sig_mu_sl, sig_mu_sb = eq_pm_to_gal_pm(mu_ra, mu_dec,
                                                      sig_mu_ra, sig_mu_dec, pm_corr,
-                                                     ra, dec, gl, gb, )
+                                                     ra, dec)
     else:
         # souce proper motion
         mu_sl, mu_sb, sig_mu_sl, sig_mu_sb = get_source_pm(gl, gb, dist_source)
@@ -259,37 +268,50 @@ def prob_mu_bulge(murel, dist_len, dist_source,
 
     return fmu_b1, fmu_b2
 
+def initialize_mass_fun(mass_power_params):
+    '''
+
+    Args:
+        mass_power_params: String holding mass power parameters from yaml file
+
+    Returns:
+        Two arrays holding powers and break values to create a broken power-law mass function.
+
+    '''
+    params = mass_power_params.split(',')
+    length = int(len(params) / 2)
+    mass_break = np.zeros(length)
+    mass_pows = np.zeros(length)
+
+    for i in range(length):
+        mass_pows[i] = params[2 * i]
+        mass_break[i] = params[2 * i + 1]
+
+    return mass_pows, mass_break
+
+def get_mass_prob(mass, mass_pows, mass_break):
+    '''
+
+    Args:
+        mass: mass of the object
+        mass_pows: array holding powers of the mass function
+        mass_break: break points of the mass function
+
+    Returns:
+        Probability of getting an object of certain mass according to mass-function
+        described by mass_pows and mass_break.
+    '''
+    idx = np.where(mass < mass_break)
+    return mass**mass_pows[idx][0]
+
 # input: murel_helio (random), te_helio, piEN_helio, piEE_helio (converted to the heliocentric reference frame), all heliocentric, equatorial
 # mura, mudec - original Gaia heliocentric, equatorial, will be converted to geo, gal
-'''
-========================================================================
-get_gal_jac_gaia(mass, dist_lens, dist_source, piE, ra, dec, pien, piee, murel, te, gl, gb, masspower, mu_ra,
-                 mu_dec, sig_mu_ra, sig_mu_dec, pm_corr, ds_weight)
-========================================================================
-Returns probability of finding star with given parameters in the Galaxy.
-------------------------------------------------------------------------
-Input:
-mass -- mass of the lens
-dist_lens -- distance to the lens
-dist_source -- distance to the source
-piE -- microlensing parallax of the analyzed model
-ra, dec -- right ascention and declitnation of the event
-pien, piee -- north and east componenets of microlensing parallax pie of the analysed model
-murel -- relative proper motion betwen the source and lens
-te -- Einstein timescale of for the analysed best model
-gl, gb -- galactic longtitude and latitude
-masspower -- power of the assumed mass-spectrum (Mlens propto M^(-masspower)
-mu_ra, mu_dec -- proper motions in ra and dec, from Gaia catalog
-sig_mu_ra, sig_mu_dec -- proper motions errors (from Gaia catalog)
-pm_corr -- correlation between  proper motions in ra and dec (from Gaia catalog)
-ds_weight -- boolean argument, if True, the properties of the source are also weighted by the galactic model
-'''
 def get_gal_jac_gaia(mass, dist_lens, dist_source,
                      piE, ra, dec, pien, piee,
                      murel, te, gl, gb,
-                     masspower,
+                     mass_pows, mass_break,
                      mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
-                     ds_weight):
+                     ds_weight, mus_weight):
     '''
 
     Args:
@@ -300,26 +322,29 @@ def get_gal_jac_gaia(mass, dist_lens, dist_source,
         pien, piee: N and E microlensing parallax components
         murel: source and lens relative proper motion
         te: Einstein timescale of the event
-        gl, gb: galactic latutde and longtitude
-        masspower:
-        mu_ra:
-        mu_dec:
-        sig_mu_ra:
-        sig_mu_dec:
-        pm_corr:
-        ds_weight:
+        gl, gb: galactic latitude and longtitude
+        mass_pows: powers of the assumed mass spectrum (Mlens propto M^(-mass_pows in range mass_break))
+        mass_break: break points of the assumed mass spectrum
+        mu_ra, mu_dec: proper motions in ra and dec, from Gaia catalog
+        sig_mu_ra, sig_mu_dec: proper motions errors (from Gaia catalog)
+        pm_corr: correlation between  proper motions in ra and dec (from Gaia catalog)
+        ds_weight: boolean argument, if True, the distance of the source are also weighted by the Galactic model
+        mus_weight: boolean argument, if True, the proper motion of the lens comes from the Galactic model
 
     Returns:
-
+        Returns probability of finding star with given parameters in the Galaxy.
     '''
 
-    fmu_b1, fmu_b2 =  prob_mu_bulge(murel, dist_len, dist_source,
+    gall = np.deg2rad(gl)
+    galb = np.deg2rad(gb)
+
+    fmu_b1, fmu_b2 =  prob_mu_bulge(murel, dist_lens, dist_source,
                                     pien, piee, piE,
                                     mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
                                     ra, dec, gl, gb,
                                     mus_weight)
 
-    fmu_d1, fmu_d2 = prob_mu_disc(murel, dist_len, dist_source,
+    fmu_d1, fmu_d2 = prob_mu_disc(murel, dist_lens, dist_source,
                                   pien, piee, piE,
                                   mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr,
                                   ra, dec, gl, gb,
@@ -328,20 +353,20 @@ def get_gal_jac_gaia(mass, dist_lens, dist_source,
     # --------------------------------------------
     # very simple mass function weighting assumed here
     # KK: modified to use a more sophisticated mass-function
-    mass_function = 1. / (mass ** masspower)
+    mass_prob = get_mass_prob(mass, mass_pows, mass_break)
     # --------------------------------------------
     # TOTAL + JACOBIAN
-    czlon = (mass_function * mass) * (dist_lens ** 4) * (
-            murel ** 4) * te / piE  # *te ze zmiany zmiennej w jakobianie (thetaE na mu)
+    # Normalizing element
+    norm = (mass_prob * mass) * (dist_lens ** 4) * (murel ** 4) * te / piE # *te ze zmiany zmiennej w jakobianie (thetaE na mu)
     # --------------------------------------------
 
     # DENSITY #edited to match Mroz 2021 notes
     densprob_d = dens_prob_disc(dist_lens, gall, galb)
-    gal_jac_d = 1.e1 * densprob_d * fmu_d1 * fmu_d2 * czlon
+    gal_jac_d = 1.e1 * densprob_d * fmu_d1 * fmu_d2 * norm
 
     # DENS BULGE + NORMALIZATION bulge-disk
     densprob_b = dens_prob_bulge(dist_lens, gall, galb)
-    gal_jac_b = 1.e1 * densprob_b * fmu_b1 * fmu_b2 * czlon
+    gal_jac_b = 1.e1 * densprob_b * fmu_b1 * fmu_b2 * norm
     gal_jac = max(gal_jac_b, gal_jac_d)
 
     if ds_weight:
@@ -351,35 +376,35 @@ def get_gal_jac_gaia(mass, dist_lens, dist_source,
 
     return gal_jac
 
-'''
-========================================================================
-rotate (x_old, y_old, angle)
-========================================================================
-Returns x and y rotated in clockwise motion by an angle.
-------------------------------------------------------------------------
-Input:
-x_old, y_old -- coordinates of an object that we want to rotate
-angle -- angle by which we want to rotate our object
-'''
 def rotate(x_old, y_old, angle):
+    '''
+
+    Args:
+        x_old, y_old: coordinates of an object that we want to rotate
+        angle: angle by which we want to rotate our object
+
+    Returns:
+        Returns x and y rotated in clockwise motion by an angle.
+    '''
     x_new = x_old * np.cos(angle) + y_old * np.sin(angle)
     y_new = -x_old * np.sin(angle) + y_old * np.cos(angle)
     return x_new, y_new
-    
-'''
-========================================================================
-eqPMtogalPM(mu_ra, mu_dec, ra, dec, l, b)
-========================================================================
-Returns proper motions in galactic coordinate system.
-From Poleski 2013.
-------------------------------------------------------------------------
-Input:
-mu_ra, mu_dec -- proper motion in equatorial coordinates
-ra, dec -- equatorial coordinates of a source with given proper motions
-l, b -- galactic coordinates of a source with given proper motions
-pm_corr -- correlation betwen mu_ra and mu_dec, from Gaia catalogue
-'''
-def eqPMtogalPM(mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr, ra, dec):
+
+def eq_pm_to_gal_pm(mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr, ra, dec):
+    '''
+
+    Args:
+        mu_ra: proper motion in equatorial coordinates (RA)
+        mu_dec: proper motion in equatorial coordinates (dec)
+        sig_mu_ra: proper motions errors (from Gaia catalog) (RA)
+        sig_mu_dec: proper motions errors (from Gaia catalog) (dec)
+        pm_corr: correlation betwen mu_ra and mu_dec, from Gaia catalogue
+        ra: equatorial coordinates of a source with given proper motions
+        dec: equatorial coordinates of a source with given proper motions
+
+    Returns:
+        Proper motion of an object in the Galactic coordinates.
+    '''
     # converting proper motions od the source to galactocentric frame
     # following Reid et al. 2009 and Mroz et al. 2019
     # 1) convert proper motions to mu_l, mu_b, from
@@ -411,20 +436,20 @@ def eqPMtogalPM(mu_ra, mu_dec, sig_mu_ra, sig_mu_dec, pm_corr, ra, dec):
     
     return pm_l, pm_b, pm_l_err, pm_b_err
 
+def calculate_north_PA(ra, dec, l, b):
+    '''
 
-'''
-========================================================================
-calculateNorthPA(ra, dec, gl, gb)
-========================================================================
-Returns the angle between equatorial north pole, lens and
-Galactic north pole.
-RETURNED ANGLE IS IN RADIANS!!!!
-------------------------------------------------------------------------
-Input:
-ra, dec -- equatorial coordinates of the lens
-l, b -- galactic coordinates of the lens
-# '''
-def calculateNorthPA(ra, dec, l, b):
+    Args:
+        ra: equatorial coordinates of the lens
+        dec: equatorial coordinates of the lens
+        l: galactic coordinates of the lens
+        b: galactic coordinates of the lens
+
+    Returns:
+        Returns the angle between equatorial north pole, lens and
+        Galactic north pole.
+        RETURNED ANGLE IS IN RADIANS!!!!
+    '''
     raRad, decRad = np.deg2rad(ra), np.deg2rad(dec)
     lRad, bRad = np.deg2rad(l), np.deg2rad(b)
     sinNPA = np.sin(raRad - np.deg2rad(RA_GAL_N)) * np.cos(np.deg2rad(DEC_GAL_N)) / np.cos(bRad)
