@@ -16,9 +16,11 @@ parameters:
     mu_ra_dec_corr: -0.017446825
 options:
     ds_weight: True
+    mus_weight: False
     n_iter: 1000000
-    masspower: -1.75
+    masspower: -1.75, 1000.
     filter: G
+    f_source: True
 output:
     samples:
         samples_filename: ajz_plus.dat
