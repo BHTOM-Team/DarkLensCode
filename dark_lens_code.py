@@ -22,7 +22,7 @@ def get_mass_distance(iteration: int):
     piEN = data[iteration][3]
     piEE = data[iteration][4]
     mag0 = data[iteration][5]
-    fs = data[iteration][6]
+    flux_fraction = data[iteration][6]
 
     if par.get('ds_weight'):
         dist_source = np.random.uniform(par.get('dist_s_min'), par.get('dist_s_max'))
@@ -45,12 +45,28 @@ def get_mass_distance(iteration: int):
     piEN_helio, piEE_helio = piE_helio[0], piE_helio[1]
     tE_helio = 1 / np.linalg.norm(tE_helio_inverse)
 
-    w_gal = get_gal_jac_gaia(mass_lens, dist_lens, dist_source, piE, par.get('alpha'), par.get('delta'), piEN_helio,
-                             piEE_helio, mu_rel, tE_helio,
-                             par.get('gal_l'), par.get('gal_b'), -par.get('masspower'), par.get('mu_ra'),
-                             par.get('mu_dec'), par.get('mu_ra_sig'), par.get('mu_dec_sig'),
-                             par.get('mu_ra_dec_corr'), par.get('ds_weight'))
-    f_blend = 1 - fs
+    w_gal = get_gal_jac_gaia(mass_lens, dist_lens, dist_source,
+                             piE,
+                             par.get('alpha'), par.get('delta'),
+                             piEN_helio, piEE_helio,
+                             mu_rel, tE_helio,
+                             par.get('gal_l'), par.get('gal_b'),
+                             par.get('mass_pows'), par.get('mass_break'),
+                             par.get('mu_ra'), par.get('mu_dec'),
+                             par.get('mu_ra_sig'), par.get('mu_dec_sig'),
+                             par.get('mu_ra_dec_corr'),
+                             par.get('ds_weight'),  par.get('mus_weight'))
+
+    #Added modification to be compatible with Kruszynska et al.2024
+    # If f_source is set to True -> the flux_fraction in the ulens PDF is the fraction
+    # of total light coming from the source (f_s). Otherwise it's the blends fraction (f_b).
+    if(par.get('f_source')):
+        f_blend = 1. - flux_fraction
+        fs = flux_fraction
+    else:
+        f_blend = flux_fraction
+        fs = 1. - flux_fraction
+
     if fs < 1:
         mag_blend = mag0 - 2.5 * np.log10(f_blend)
     else:
@@ -93,7 +109,7 @@ def parse_input_parameters(parameters: dict, options: dict):
     try:
         par['masspower'] = options['masspower']
     except KeyError:
-        par['masspower'] = -1.75
+        par['masspower'] = '-1.75, 1000.'
     try:
         par['filter'] = options['filter']
     except KeyError:
@@ -102,6 +118,14 @@ def parse_input_parameters(parameters: dict, options: dict):
         par['ds_weight'] = options['ds_weight']
     except KeyError:
         par['ds_weight'] = False
+    try:
+        par['mus_weight'] = options['mus_weight']
+    except KeyError:
+        par['mus_weight'] = False
+    try:
+        par['f_source'] = options['f_source']
+    except KeyError:
+        par['f_source'] = True
     try:
         par['n_iter'] = int(options['n_iter'])
     except KeyError:
@@ -259,6 +283,8 @@ def main(yaml_file: str):
     par['gal_b'] = eq2gal.galactic.b.degree
     # Initializing mass-luminosity function
     par['fun'], par['mag_min'], par['mag_max'] = initialize_interp(par['filter'])
+    # Initializing mass-function
+    par['mass_pows'], par['mass_break'] = initialize_mass_fun(par['masspower'])
     # Getting relative Earth velocity at the reference time - for further geo-helio conversion
     par['x_Earth_perp'], par['v_Earth_perp'] = get_Earth_pos(par.get('t0par'), par.get('alpha'), par.get('delta'))
     # Multiprocessing
