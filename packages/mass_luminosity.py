@@ -33,7 +33,7 @@ def initialize_interp(band: str):
         mass = mass_lum.loc[
             (mass_lum["Mv"] != "...") & (mass_lum["Msun"] != "....") & (mass_lum["Msun"] != "...")][
             "Msun"].values
-        mag, mass = mag_v.astype(np.float), mass.astype(np.float)
+        mag, mass = mag_v.astype(float), mass.astype(float)
     elif band == "I":
         # absolute magnitude in V
         mag_v = mass_lum.loc[
@@ -47,7 +47,7 @@ def initialize_interp(band: str):
         mass = mass_lum.loc[
             (mass_lum["Mv"] != "...") & (mass_lum["V-Ic"] != "...") & (mass_lum["V-Ic"] != ".....") & (
                     mass_lum["Msun"] != "....") & (mass_lum["Msun"] != "...")]["Msun"].values
-        mag_v, v_i, mass = mag_v.astype(np.float), v_i.astype(np.float), mass.astype(np.float)
+        mag_v, v_i, mass = mag_v.astype(float), v_i.astype(float), mass.astype(float)
         # absolute magnitude in I, calculated using provided abs mag in V and colour in V-Ic
         mag = mag_v - v_i
     elif band == "G":
@@ -59,7 +59,7 @@ def initialize_interp(band: str):
         mass = mass_lum.loc[
             (mass_lum["M_G"] != "...") & (mass_lum["Msun"] != "....") & (mass_lum["Msun"] != "...")][
             "Msun"].values
-        mag, mass = mag_g.astype(np.float), mass.astype(np.float)
+        mag, mass = mag_g.astype(float), mass.astype(float)
     elif band == "K":
         # absolute magnitude in K
         mag_g = mass_lum.loc[
@@ -69,7 +69,7 @@ def initialize_interp(band: str):
         mass = mass_lum.loc[
             (mass_lum["M_Ks"] != "...") &  (mass_lum["M_Ks"] != "....") & (mass_lum["Msun"] != "....") & (mass_lum["Msun"] != "...")][
             "Msun"].values
-        mag, mass = mag_g.astype(np.float), mass.astype(np.float)
+        mag, mass = mag_g.astype(float), mass.astype(float)
     else:
         print("Mamajek problem: requested filter does not exist")
         exit(2)
