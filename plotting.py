@@ -17,7 +17,7 @@ import pathlib
 from scipy import optimize
 
 from packages import const
-from .dark_lens_code import take_results_parameters
+from dark_lens_code import take_results_parameters
 from turbo_colormap import turbo_colormap_data
 
 filterwarnings('ignore', 'divide by zero encountered in log10')
@@ -289,6 +289,8 @@ def mass_distance_plot(parameters: Dict[str, float],
                        histogram_bins: int = 100,
                        figsize: Tuple[int, int] = (8, 5),
                        axis: Optional[plt.axes] = None,
+                       x_limits: Tuple[float, float] = None,
+                       y_limits: Tuple[float, float] = None,
                        include_cbar: bool = True):
     """
     Plot the mass-distance plot
@@ -302,6 +304,8 @@ def mass_distance_plot(parameters: Dict[str, float],
         histogram_bins: number of bins
         figsize: matplotlib figsize kwarg
         axis: pass a figure axis if you want to plot blend-lens as a subplot
+        x_limits: custom limits for x axis
+        y_limits: custom limits for y axis
         include_cbar: include a colorbar next to the plot
 
     Returns:
@@ -330,6 +334,7 @@ def mass_distance_plot(parameters: Dict[str, float],
                                                            np.linspace(0, parameters["dist_s_max"],
                                                                        histogram_bins)],
                                                      density=True)
+
     except ValueError as e:
         print("There number of bins was too small in order to create increasing contour levels for mass-dist plot. "
               "Try another value.")
@@ -343,6 +348,11 @@ def mass_distance_plot(parameters: Dict[str, float],
                                              axis=axis,
                                              include_cbar=include_cbar)
         else:
+            print(x_limits)
+            if x_limits is not None:
+                plt.xlim(x_limits)
+            if y_limits is not None:
+                plt.ylim(y_limits)
             __contour_mass_distance_histogram(histogram=histogram,
                                               x_edges=x_edges,
                                               y_edges=y_edges,
@@ -358,8 +368,14 @@ def mass_distance_plot(parameters: Dict[str, float],
     axis.set_ylabel(r'lens mass $[M_\odot]$')
     axis.set_xlabel('lens distance [kpc]')
     axis.set_yscale('log')
-    axis.set_xlim(0, parameters["dist_s_max"])
-    axis.set_ylim(0.1, 50)
+    if x_limits is not None:
+        axis.set_xlim(x_limits)
+    else:
+        axis.set_xlim(0, parameters["dist_s_max"])
+    if y_limits is not None:
+        axis.set_ylim(y_limits)
+    else:
+        axis.set_ylim(0.1, 50)
     axis.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
 
     if plotname:
@@ -377,6 +393,8 @@ def blend_lens_plot(parameters: Dict[str, float],
                     histogram_bins: int = 100,
                     figsize: Tuple[int, int] = (8, 5),
                     axis: Optional[plt.axes] = None,
+                    x_limits: Tuple[float, float] = None,
+                    y_limits: Tuple[float, float] = None,
                     include_cbar: bool = True):
     """
     Plot the blend-lens plot
@@ -453,8 +471,15 @@ def blend_lens_plot(parameters: Dict[str, float],
               "Try another value.")
         exit(2)
 
-    axis.set_xlim(min([min_mag_lens, min_mag_blend]), const.MIN_MAG)
-    axis.set_ylim(const.MIN_MAG, min([min_mag_lens, min_mag_blend]))
+    if x_limits is not None:
+        axis.set_xlim(x_limits)
+    else:
+        axis.set_xlim(min([min_mag_lens, min_mag_blend]), const.MIN_MAG)
+
+    if y_limits is not None:
+        axis.set_ylim(y_limits)
+    else:
+        axis.set_ylim(const.MIN_MAG, min([min_mag_lens, min_mag_blend]))
 
     axis.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
     axis.set_xlabel('lens light [mag]')
