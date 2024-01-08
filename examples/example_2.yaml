@@ -1,23 +1,23 @@
 input:
     samples:  
-        file_name: Gaia18ajz_dlc_plus.npy
+        file_name: examples/samples/gdr-3-ulens-025_comb.npy
 parameters:
-    alpha: 277.56025
-    delta: -8.22021
-    t0par: 8242.62
-    extinction: 10
-    dist_s: 10
-    dist_s_min: 9.9
-    dist_s_max: 10.1
-    mu_ra:   -2.861862185544017
-    mu_ra_sig: 0.022097435
-    mu_dec: -5.447365851300708
-    mu_dec_sig: 0.02856878
-    mu_ra_dec_corr: -0.017446825
+    alpha: 260.87806378284154
+    delta: -27.37877344566956
+    t0par: 7491.0
+    extinction: 4.286
+    dist_s: 8.
+    dist_s_min: 0.1
+    dist_s_max: 10.
+    mu_ra:   -4.60516696452571
+    mu_ra_sig: 0.05998582
+    mu_dec: -5.56086622451114
+    mu_dec_sig: 0.041736063
+    mu_ra_dec_corr: 0.21241449
 options:
     ds_weight: True
     mus_weight: False
-    n_iter: 1000000
+    n_iter: 100000
     masspower: -0.3, 0.08,
                -1.3, 0.5,
                -2.3, 150.
@@ -25,7 +25,7 @@ options:
     f_source: True
 output:
     samples:
-        samples_filename: ajz_plus.dat
-        results_filename: ajz_plus.txt
+        samples_filename: examples/samples/ulens-025.npy
+        results_filename: examples/samples/ulens-025.dat
     plot:
-        plot_name: ajz_plus.png
+        plot_filename: ulens-025.png
