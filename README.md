@@ -87,11 +87,11 @@ This section has to contain the following subfields:
 ### File with chains
 
 File with chains in .npy format should contain a tuple of tuples of lens parameters.
-The parameters should be in the following order
+The parameters should be in the following order:
 ```
 t0 [JD − 2450000]   u0  tE [days]   piEN    piEE    mag0    flux_fraction
 ```
-
+These parameters have to be in the geocentric frame. They are transferred into a heliocentric frame inside the Dark Lens Code.
 #### Flags
 
 You can use flags to run code with specific options.
@@ -108,12 +108,12 @@ The default is False.
 ``` sh
 --ds_weight True
 ```
-### ds_weight
+### mus_weight
 Use when you do not know the proper motion to the source and 
 want to weigh it with a galaxy model.
 The default is False.
 ``` sh
---ds_weight True
+--mus_weight True
 ```
 
 ### f_source
