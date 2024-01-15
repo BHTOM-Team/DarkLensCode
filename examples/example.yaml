@@ -1,19 +1,19 @@
 input:
     samples:  
-        file_name: Gaia18ajz_dlc_plus.npy
+        file_name: Gaia18ajz_GO_minus.npy
 parameters:
     alpha: 277.56025
     delta: -8.22021
-    t0par: 8242.62
-    extinction: 10
-    dist_s: 10
-    dist_s_min: 9.9
-    dist_s_max: 10.1
-    mu_ra:   -2.861862185544017
-    mu_ra_sig: 0.022097435
-    mu_dec: -5.447365851300708
-    mu_dec_sig: 0.02856878
-    mu_ra_dec_corr: -0.017446825
+    t0par: 8231.01
+    extinction: 8.0
+    dist_s: 11.48
+    dist_s_min: 8.57
+    dist_s_max: 14.39
+    mu_ra:   -5.370633189329838
+    mu_ra_sig: 0.5923545
+    mu_dec: -6.692544042942325
+    mu_dec_sig: 0.5051775
+    mu_ra_dec_corr: 0.38058406
 options:
     ds_weight: True
     mus_weight: False
@@ -26,4 +26,4 @@ output:
         samples_filename: ajz_plus.dat
         results_filename: ajz_plus.txt
     plot:
-        plot_name: ajz_plus.png
+        plot_filename: ajz_plus.png
