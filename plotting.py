@@ -527,10 +527,12 @@ def __plot_histogram_for_property(results: dict,
     axis.plot(x_linspace, y, c=HIST1D_COLOR)
     axis.set_xlabel(x_label)
     axis.set_ylabel('PDF')
-    axis.grid(linestyle='--')
 
     axis.vlines(median, 0, median_pdf, linewidth=1.25, color=HIST1D_COLOR)
     axis.vlines(mode, 0, mode_pdf, linewidth=1, color=HIST1D_COLOR, ls='--')
+
+    axis.set_xlim(left=quantile(property_values, weights, 0.001), right=quantile(property_values, weights, 0.999))
+    axis.set_ylim(bottom=0)
 
     axis.fill_between(x_linspace[x_sigma1_left_arg:x_sigma1_right_arg + 1],
                       y[x_sigma1_left_arg:x_sigma1_right_arg + 1], 0, alpha=.15, color=HIST1D_COLOR)
@@ -546,7 +548,6 @@ def plot_lens_mass_distributions(results: np.array,
 
 
 def plot_lens_distance_distribution(results: np.array,
-                                    parameters: np.array,
                                     axis: plt.axes,
                                     blend_eq_lens: bool = False, ):
     max_dist_lens = quantile(results.get("DL"), results.get("weights"), 0.99865)
@@ -589,7 +590,7 @@ def plot_blend_mag_distributions(results: np.array,
 def plot_histograms(results: np.array,
                     parameters: np.array,
                     blend_eq_lens: bool = False,
-                    plotname: Optional[str] = None,
+                    plotname: str = None,
                     extinction: bool = False):
     blend_eq_lens_msg: str = 'FOR BLEND==LENS ' if blend_eq_lens else ''
     print(f"--- PLOTTING 1D HISTOGRAMS {blend_eq_lens_msg}---")
@@ -597,24 +598,27 @@ def plot_histograms(results: np.array,
     fig, ax = plt.subplots(2, 2, figsize=(10, 8))
 
     plot_lens_mass_distributions(results, ax[0][0], blend_eq_lens=blend_eq_lens)
-    plot_lens_distance_distribution(results, parameters, ax[0][1], blend_eq_lens=blend_eq_lens)
+    plot_lens_distance_distribution(results, ax[0][1], blend_eq_lens=blend_eq_lens)
     plot_lens_mag_distributions(results, parameters, ax[1][0], extinction=extinction, blend_eq_lens=blend_eq_lens)
     plot_blend_mag_distributions(results, ax[1][1], blend_eq_lens=blend_eq_lens)
 
     plt.tight_layout()
 
-    if plotname:
-        
-        mass_histogram_plotname = generate_plot_name(plotname, 'mass_histogram')
-        distance_histogram_plotname = generate_plot_name(plotname, 'distance_histogram')
-        histogram_plotname = generate_plot_name(plotname, 'histogram')
-        
-        extent = ax[0][0].get_tightbbox(fig.canvas.renderer).transformed(fig.dpi_scale_trans.inverted())
-        plt.savefig(mass_histogram_plotname, bbox_inches=extent.expanded(1.05, 1.05))
-        extent = ax[0][1].get_tightbbox(fig.canvas.renderer).transformed(fig.dpi_scale_trans.inverted())
-        plt.savefig(distance_histogram_plotname, bbox_inches=extent.expanded(1.05, 1.05))
-        plt.savefig(histogram_plotname)
-        print(f"Plot saved: {histogram_plotname}\n")
+    mass_histogram_plotname = generate_plot_name(plotname, 'mass_histogram')
+    distance_histogram_plotname = generate_plot_name(plotname, 'distance_histogram')
+    histogram_plotname = generate_plot_name(plotname, 'histogram')
+    plt.savefig(histogram_plotname)
+    print(f"Plot saved: {histogram_plotname}\n")
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+    plot_lens_mass_distributions(results, ax, blend_eq_lens=blend_eq_lens)
+    plt.savefig(mass_histogram_plotname, bbox_inches='tight')
+    print(f"Plot saved: {mass_histogram_plotname}\n")
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+    plot_lens_distance_distribution(results, ax, blend_eq_lens=blend_eq_lens)
+    plt.savefig(distance_histogram_plotname, bbox_inches='tight')
+    print(f"Plot saved: {distance_histogram_plotname}\n")
 
 
 # --- CORNERPLOT --- #
