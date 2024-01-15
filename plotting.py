@@ -511,12 +511,11 @@ def __plot_histogram_for_property(results: dict,
 
     y = pdf(x_linspace)
 
-    # Sample the PDF function to calculate the median and the mode
-    resampled = pdf.resample(10000)
-    median = np.median(resampled)
+    # Get the mode and the median
+    mode = x_linspace[np.argmax(y)]
+    mode_pdf = y[np.argmax(y)]
+    median = quantile(property_values, weights, 0.5)
     median_pdf = pdf(median)
-    mode = optimize.minimize_scalar(lambda x: -pdf(x))
-    mode_pdf = pdf(mode.x)
 
     # Get the 1 sigma values
     sigma1_left_bound = quantile(property_values, weights, const.SIGMA_MINUS)
@@ -525,14 +524,13 @@ def __plot_histogram_for_property(results: dict,
     # Get the indices corresponding to the 1 sigma values
     x_sigma1_left_arg = np.argmin(np.abs(x_linspace - sigma1_left_bound))
     x_sigma1_right_arg = np.argmin(np.abs(x_linspace - sigma1_right_bound))
-
     axis.plot(x_linspace, y, c=HIST1D_COLOR)
     axis.set_xlabel(x_label)
     axis.set_ylabel('PDF')
     axis.grid(linestyle='--')
 
     axis.vlines(median, 0, median_pdf, linewidth=1.25, color=HIST1D_COLOR)
-    axis.vlines(mode.x, 0, mode_pdf, linewidth=1, color=HIST1D_COLOR, ls='--')
+    axis.vlines(mode, 0, mode_pdf, linewidth=1, color=HIST1D_COLOR, ls='--')
 
     axis.fill_between(x_linspace[x_sigma1_left_arg:x_sigma1_right_arg + 1],
                       y[x_sigma1_left_arg:x_sigma1_right_arg + 1], 0, alpha=.15, color=HIST1D_COLOR)
