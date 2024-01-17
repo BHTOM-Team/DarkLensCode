@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 import yaml
 
-import packages.gal_jac_dens as gjd
+import src.gal_jac_dens as gjd
 
 
 class MyTestCase(unittest.TestCase):
