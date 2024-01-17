@@ -17,7 +17,7 @@ KK notes: In Batista et al. 2011: bulge spans form 5kpc<=d<=11kpc
 
 import numpy as np
 from src.const import DISTANCE_GC, V_ROT, U_SUN_LSR, V_SUN_LSR, W_SUN_LSR, RA_GAL_N, DEC_GAL_N, L_EQ_N
-
+from src.mass_function import MassFunction
 
 def V(r):
     '''
@@ -289,20 +289,6 @@ def initialize_mass_fun(mass_power_params):
 
     return mass_pows, mass_break
 
-def get_mass_prob(mass, mass_pows, mass_break):
-    '''
-
-    Args:
-        mass: mass of the object
-        mass_pows: array holding powers of the mass function
-        mass_break: break points of the mass function
-
-    Returns:
-        Probability of getting an object of certain mass according to mass-function
-        described by mass_pows and mass_break.
-    '''
-    idx = np.where(mass < mass_break)
-    return mass**mass_pows[idx][0]
 
 # input: murel_helio (random), te_helio, piEN_helio, piEE_helio (converted to the heliocentric reference frame), all heliocentric, equatorial
 # mura, mudec - original Gaia heliocentric, equatorial, will be converted to geo, gal
@@ -353,8 +339,8 @@ def get_gal_jac_gaia(mass, dist_lens, dist_source,
     # --------------------------------------------
     # very simple mass function weighting assumed here
     # KK: modified to use a more sophisticated mass-function
-    print(mass_break)
-    mass_prob = get_mass_prob(mass, mass_pows, mass_break)
+    mass_func = MassFunction(mass_pows, mass_break)
+    mass_prob = mass_func.calc_prob(mass)
     # --------------------------------------------
     # TOTAL + JACOBIAN
     # Normalizing element
