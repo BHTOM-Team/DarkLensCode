@@ -16,7 +16,7 @@ import scipy.stats as ss
 import pathlib
 from scipy import optimize
 
-from packages import const
+from src import const
 from dark_lens_code import take_results_parameters
 from turbo_colormap import turbo_colormap_data
 

@@ -2,10 +2,10 @@ import numpy as np
 import time
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from packages.gal_jac_dens import *
-from packages.mass_luminosity import *
-from packages.geo_helio import get_Earth_pos
-import packages.const as const
+from src.gal_jac_dens import *
+from src.mass_luminosity import *
+from src.geo_helio import get_Earth_pos
+import src.const as const
 import click
 from multiprocessing import Pool, set_start_method
 from tqdm import tqdm
