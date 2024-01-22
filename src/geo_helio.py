@@ -8,7 +8,6 @@ import numpy as np
 from astropy.coordinates import get_body_barycentric_posvel
 from astropy.time import Time
 import math
-import matplotlib.pyplot as plt
 
 def get_dirs(ra_deg, dec_deg):
 
