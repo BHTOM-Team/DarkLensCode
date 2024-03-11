@@ -75,10 +75,17 @@ def get_mass_distance(iteration: int):
     if mag_blend > const.MIN_MAG:
         mag_blend = const.MIN_MAG
 
-    mag_lens_w_extinction = get_ms_mag(par.get('fun'), mass_lens, dist_lens, par.get('filter'), par.get('extinction'),
-                                       par.get('mag_min'), par.get('mag_max'))
-    mag_lens_0_extinction = get_ms_mag(par.get('fun'), mass_lens, dist_lens, par.get('filter'), 0.0,
-                                       par.get('mag_min'), par.get('mag_max'))
+    # Added to test Kruszynska et al. 2024 reviewer's results
+    if(par.get('malkov')):
+        # Use Malkov et al. 2022 relation (limited use, matches Mamajek's table)
+        mag_lens_w_extinction = get_mag_g_malkov(mass_lens, dist_lens, par.get('extinction'), subgiant_flag=par.get('subgiant'))
+        mag_lens_0_extinction = get_mag_g_malkov(mass_lens, dist_lens, 0.0, subgiant_flag=par.get('subgiant'))
+    else:
+        # Proceed with regular interpolated Mamajek table
+        mag_lens_w_extinction = get_ms_mag(par.get('fun'), mass_lens, dist_lens, par.get('filter'), par.get('extinction'),
+                                           par.get('mag_min'), par.get('mag_max'))
+        mag_lens_0_extinction = get_ms_mag(par.get('fun'), mass_lens, dist_lens, par.get('filter'), 0.0,
+                                           par.get('mag_min'), par.get('mag_max'))
     if fs < 0:
         mag_source = const.MIN_MAG
     else:

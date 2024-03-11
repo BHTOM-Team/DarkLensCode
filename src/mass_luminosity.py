@@ -113,3 +113,72 @@ def get_ms_mag(fun, mass: float, dist: float, band: str, extinction: float, mag_
         return 0
 
     return mag
+
+def get_abs_mag_g_ms_malkov(mass, mag_min, mag_max):
+    '''
+    This function returns an absolute magnitude for a MS star
+    using the relation from Malkov et al. 2022 (https://ui.adsabs.harvard.edu/abs/2022Ap%26SS.367...37M/abstract).
+
+    Args:
+        mass: Mass of the lens.
+        mag_min: Minimum absolute magnitude when mass exceeds Mamajek's table range
+        mag_max: Maximum absolute magnitude when mass exceeds Mamajek's table range
+
+    Returns:
+        Absolute magnitude in G band of an MS star.
+
+    '''
+    abs_mag_g = np.nan
+
+    if((18. > mass) and (mass > 2.27)):
+        abs_mag_g = -5.67 * np.log10(mass) + 2.96
+    elif((2.27 > mass) and (mass > 1.4)):
+        abs_mag_g = -9.53 * np.log10(mass) + 4.33
+    elif(mass > 18.):
+        abs_mag_g = mag_min
+    elif(mass < 1.4):
+        abs_mag_g = mag_max
+
+    return abs_mag_g
+
+
+def get_abs_mag_g_subgiant_malkov(mass, mag_min, mag_max):
+    '''
+    This function returns an absolute magnitude for a subgiant star
+    using the relation from Malkov et al. 2022 (https://ui.adsabs.harvard.edu/abs/2022Ap%26SS.367...37M/abstract).
+
+    Args:
+        mass: Mass of the lens.
+        mag_min: Minimum absolute magnitude when mass exceeds Malkov et al. relation range
+        mag_max: Maximum absolute magnitude when mass exceeds Malkov et al. relation range
+
+    Returns:
+        Absolute magnitude in G band of a subgiant star.
+
+    '''
+    abs_mag_g = np.nan
+
+    if ((18. > mass) and (mass > 3.84)):
+        abs_mag_g = -6.74 * np.log10(mass) + 2.46
+    elif ((3.84 > mass) and (mass > 1.4)):
+        abs_mag_g = -8.98 * np.log10(mass) + 3.77
+    elif (mass > 18.):
+        abs_mag_g = mag_min
+    elif (mass < 1.4):
+        abs_mag_g = mag_max
+
+    return abs_mag_g
+
+def get_mag_g_malkov(mass, distance, extinction, subgiant_flag=False):
+    if(subgiant_flag):
+        mag_min = -6.00
+        mag_max = 2.46
+        abs_mag = get_abs_mag_g_subgiant_malkov(mass, mag_min, mag_max)
+    else:
+        mag_min = -4.16
+        mag_max = 2.94
+        abs_mag = get_abs_mag_g_ms_malkov(mass, mag_min, mag_max)
+
+    mag = abs_mag + 5. * np.log10(dist * 1000.) - 5. + extinction
+
+    return mag
