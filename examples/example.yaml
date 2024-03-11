@@ -4,26 +4,28 @@ input:
 parameters:
     alpha: 277.56025
     delta: -8.22021
-    t0par: 8231.01
+    t0par: 8231
     extinction: 8.0
-    dist_s: 11.48
-    dist_s_min: 8.57
-    dist_s_max: 14.39
+    ds_median: 4.41
+    ds_err_neg: 5.79
+    ds_err_pos: 3.07
     mu_ra:   -5.370633189329838
     mu_ra_sig: 0.5923545
     mu_dec: -6.692544042942325
     mu_dec_sig: 0.5051775
     mu_ra_dec_corr: 0.38058406
 options:
-    ds_weight: True
+    ds_weight: False
     mus_weight: False
     n_iter: 1000000
-    masspower: -1.75, 1000.
+    ds_samples: 10000
+    masspower: 0.51, 1.0,
+               -0.83, 150,
     filter: G
     f_source: True
 output:
     samples:
-        samples_filename: ajz_plus.dat
-        results_filename: ajz_plus.txt
+        samples_filename: results/18ajz_minus.dat
+        results_filename: results/18ajz_minus.txt
     plot:
-        plot_filename: ajz_plus.png
+        plot_filename: results/18ajz_minus.png
