@@ -89,8 +89,10 @@ def get_mass_distance(iteration: int):
     else:
         mag_source = mag0 - 2.5 * np.log10(fs)
 
+    thetaE = tE * mu_rel / 365.25
+
     return [w_gal, mass_lens, dist_lens, mag_blend, mag_lens_w_extinction, mag_lens_0_extinction, mag_source, t0, tE,
-            u0, piEN, piEE, mag0, fs, mu_rel]
+            u0, piEN, piEE, mag0, fs, mu_rel, thetaE]
 
 
 def mp_mass_distance(n_iter: int):
@@ -169,7 +171,8 @@ def take_results_parameters(results_t: list):
     res_par = {'weights': results_t[0] / np.sum(results_t[0]), 'ML': results_t[1], 'DL': results_t[2],
                'mag_blend': results_t[3], 'mag_lens_w_extinction': results_t[4], 'mag_lens_0_extinction': results_t[5],
                'mag_source': results_t[6], 't0': results_t[7], 'tE': results_t[8], 'u0': results_t[9],
-               'piEN': results_t[10], 'piEE': results_t[11], 'mag0': results_t[12], 'fs': results_t[13]}
+               'piEN': results_t[10], 'piEE': results_t[11], 'mag0': results_t[12], 'fs': results_t[13],
+               'theta_E': results_t[14]}
     return res_par
 
 
@@ -207,11 +210,15 @@ def save_results(filename: str, res_par: dict):
     median_dl = quantile(res_par.get('DL'), res_par.get('weights'), const.MEDIAN)
     plus_dl = quantile(res_par.get('DL'), res_par.get('weights'), const.SIGMA_PLUS)
     minus_dl = quantile(res_par.get('DL'), res_par.get('weights'), const.SIGMA_MINUS)
+    median_thetaE = quantile(res_par.get('theta_E'), res_par.get('weights'), const.MEDIAN)
+    plus_thetaE = quantile(res_par.get('theta_E'), res_par.get('weights'), const.SIGMA_PLUS)
+    minus_thetaE = quantile(res_par.get('theta_E'), res_par.get('weights'), const.SIGMA_MINUS)
 
     print('--- CALCULATING RESULTS ---')
     prob_lower_limit, prob_upper_limit = get_probability(res_par)
     print(f'Mass of the lens: {median_ml:.2f} +{plus_ml - median_ml:.2f} -{median_ml - minus_ml:.2f} [Solar masses]')
-    print(f'Distance do the lens: {median_dl:.2f} +{plus_dl - median_dl:.2f} -{median_dl - minus_dl:.2f} [kpc]\n')
+    print(f'Distance do the lens: {median_dl:.2f} +{plus_dl - median_dl:.2f} -{median_dl - minus_dl:.2f} [kpc]')
+    print(f'Theta_E: {median_thetaE:.2f} +{plus_thetaE - median_thetaE:.2f} -{median_thetaE - minus_thetaE :.2f} [mas]\n')
 
     print('--- SAVING RESULTS ---')
     header = 'ML_median ML_sigma+ ML_sigma- DL_median DL_sigma+ DL_sigma- DarkLensProb_lower_limit DarkLensProb_upper_limit'
@@ -221,7 +228,10 @@ def save_results(filename: str, res_par: dict):
     dist_sigma_plus = plus_dl - median_dl
     dist_sigma_minus = median_dl - minus_dl
     dist = f'{median_dl:.5f} +{dist_sigma_plus:.5f} -{dist_sigma_minus:.5f}'
-    res = f'{header}\n{mass} {dist} {prob_lower_limit:.5f} {prob_upper_limit:.5f}'
+    thetaE_sigma_plus = plus_thetaE - median_thetaE
+    thetaE_sigma_minus = median_thetaE - minus_thetaE
+    thetaE = f'{median_thetaE:.5f} +{thetaE_sigma_plus:.5f} -{thetaE_sigma_minus:.5f}'
+    res = f'mass: {mass}\ndist: {dist}\ntheta_E: {thetaE}\nprob: {prob_lower_limit:.5f} {prob_upper_limit:.5f}'
     print(f'Results saved: {filename}\n')
     with open(filename, 'w') as f:
         f.write(res)
