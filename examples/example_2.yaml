@@ -6,9 +6,9 @@ parameters:
     delta: -27.37877344566956
     t0par: 7491.0
     extinction: 4.286
-    dist_s: 8.
-    dist_s_min: 0.1
-    dist_s_max: 10.
+    ds_median: 8.
+    ds_err_neg: 7.9
+    ds_err_pos: 2.
     mu_ra:   -4.60516696452571
     mu_ra_sig: 0.05998582
     mu_dec: -5.56086622451114

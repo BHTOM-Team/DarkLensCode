@@ -331,7 +331,7 @@ def mass_distance_plot(parameters: Dict[str, float],
     try:
         histogram, x_edges, y_edges = np.histogram2d(mass_lens, dist_lens, weights=weights,
                                                      bins=[10 ** np.linspace(-1, 1.7, histogram_bins),
-                                                           np.linspace(0, parameters["dist_s_max"],
+                                                           np.linspace(0, parameters["ds_median"]+parameters["ds_err_pos"],
                                                                        histogram_bins)],
                                                      density=True)
 
@@ -371,7 +371,7 @@ def mass_distance_plot(parameters: Dict[str, float],
     if x_limits is not None:
         axis.set_xlim(x_limits)
     else:
-        axis.set_xlim(0, parameters["dist_s_max"])
+        axis.set_xlim(0, parameters["ds_median"]+parameters["ds_err_pos"])
     if y_limits is not None:
         axis.set_ylim(y_limits)
     else:

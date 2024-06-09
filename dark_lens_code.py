@@ -12,6 +12,7 @@ from tqdm import tqdm
 from wquantiles import quantile
 from typing import Tuple
 import yaml
+from asymmetric_uncertainty import a_u
 
 
 def get_mass_distance(iteration: int):
@@ -25,11 +26,15 @@ def get_mass_distance(iteration: int):
     flux_fraction = data[iteration][6]
 
     if par.get('ds_weight'):
-        dist_source = np.random.uniform(par.get('dist_s_min'), par.get('dist_s_max'))
+        dist_source = np.random.uniform(par.get('ds_median')-par.get('ds_err_neg'),
+                                        par.get('ds_median')+par.get('ds_err_pos'))
     else:
-        dist_source = np.random.normal(par.get('dist_s'), (par.get('dist_s_max') - par.get('dist_s_min') / 2))
-        while dist_source < 0:
-            dist_source = np.random.normal(par.get('dist_s'), (par.get('dist_s_max') - par.get('dist_s_min') / 2))
+        au = a_u(par.get('ds_median'), par.get('ds_err_pos'), par.get('ds_err_neg'))
+        ds_min = max(0.1, par.get('ds_median') - 3*par.get('ds_err_neg'))
+        ds_max = par.get('ds_median') + 3*par.get('ds_err_pos')
+        distances = np.linspace(ds_min, ds_max, par.get('ds_samples'))
+        probs = au.pdf(distances)
+        dist_source = np.random.choice(distances, p=probs/np.sum(probs))
 
     mu_rel = np.random.uniform(0, 30)
     piE = np.sqrt(piEN ** 2 + piEE ** 2)
@@ -130,6 +135,10 @@ def parse_input_parameters(parameters: dict, options: dict):
         par['n_iter'] = int(options['n_iter'])
     except KeyError:
         par['n_iter'] = int(1e6)
+    try:
+        par['ds_samples'] = int(options['ds_samples'])
+    except KeyError:
+        par['ds_samples'] = 10000
 
     try:
         print('INPUT PARAMETERS: ')
@@ -137,9 +146,10 @@ def parse_input_parameters(parameters: dict, options: dict):
         print('delta = ', par['delta'])
         print('t0par = ', par['t0par'])
         print('extinction = ', par['extinction'])
-        print('dist_source = ', par['dist_s'])
-        print('dist_source_max = ', par['dist_s_max'])
-        print('dist_source_min = ', par['dist_s_min'])
+        print('ds_median = ', par['ds_median'])
+        print('ds_err_pos = ', par['ds_err_pos'])
+        print('ds_err_neg = ', par['ds_err_neg'])
+        print('ds_samples = ', par['ds_samples'])
         print('mu_ra = ', par['mu_ra'])
         print('mu_ra_sig = ', par['mu_ra_sig'])
         print('mu_dec = ', par['mu_dec'])

@@ -59,9 +59,9 @@ This section has to contain the following subfields:
 - ```delta``` -- Declination of the event
 - ```t0par``` -- t_0,par of the microlensing model.
 - ```extinction``` -- extinction towards the event in the same filter as the model flux parameters are provided.
-- ```dist_s``` -- most likely distance to the source.
-- ```dist_s_min``` -- minimal distance to the source.
-- ```dist_s_max``` -- maximal distance to the source.
+- ```ds_median``` -- median of the D_S distribution.
+- ```ds_err_pos``` -- positive error of D_S.
+- ```ds_err_neg``` -- negative error of D_S.
 - ```mu_ra``` -- proper motion in the RA. 
 - ```mu_ra_sig``` -- uncertainty of the proper motion in the RA.
 - ```mu_dec``` -- proper motion in the declination.
@@ -103,7 +103,7 @@ darklens --niter 1e7 chain_file.npy parameters_file.txt plotname
 ### ds_weight
 Use when you do not know the distance to the source and 
 want to weigh it with a galaxy model.
-In this case dist_s_min and dist_s_max are the ends of the distance sampling range.
+In this case ds_median - ds_err_neg and ds_median + ds_err_pos are the ends of the distance sampling range.
 The default is False.
 ``` sh
 --ds_weight True
