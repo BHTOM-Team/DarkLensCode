@@ -260,8 +260,8 @@ def __contour_blend_lens_histogram(histogram: np.array,
 
 def __plot_extinction_lines(extinction: float, axis: plt.axes):
     axis.plot(np.linspace(-20, 30, 100), np.linspace(-20, 30, 100), 'w-')
-    axis.plot(np.linspace(-20, 30, 100) - extinction,
-              np.linspace(-20, 30, 100), 'w--')
+    # axis.plot(np.linspace(-20, 30, 100) - extinction,
+    #           np.linspace(-20, 30, 100), 'w--')
     axis.fill_between(np.linspace(-20, 30, 100), np.linspace(-20, 30, 100), 30, alpha=0.1, facecolor='k',
                       edgecolor='None')
 
@@ -272,10 +272,12 @@ def __plot_extinction_lines(extinction: float, axis: plt.axes):
 def __filter_for_blend_eq_lens(results: Dict[str, float],
                                property_name: str) -> np.array:
     mag_blend: np.array = results.get("mag_blend")
-    mag_lens_0_extinction: np.array = results.get("mag_lens_0_extinction")
+    # mag_lens_0_extinction: np.array = results.get("mag_lens_0_extinction")
     mag_lens_w_extinction: np.array = results.get("mag_lens_w_extinction")
+    # blend_lens_mask: np.array = np.argwhere(
+    #     (mag_blend <= mag_lens_w_extinction) & (mag_blend >= mag_lens_0_extinction)).flatten()
     blend_lens_mask: np.array = np.argwhere(
-        (mag_blend <= mag_lens_w_extinction) & (mag_blend >= mag_lens_0_extinction)).flatten()
+        (mag_blend <= mag_lens_w_extinction)).flatten()
 
     return results.get(property_name)[blend_lens_mask]
 

@@ -1,14 +1,18 @@
 input:
     samples:  
-        file_name: examples/samples/gdr-3-ulens-025_comb.npy
+        file_name: examples/samples/gdr3-ulens-025_G1-.npy
 parameters:
     alpha: 260.87806378284154
     delta: -27.37877344566956
     t0par: 7491.0
-    extinction: 4.286
+    extinction: 0.6249, 0.001892, -5.226e-07, 5.784e-11, -2.199e-15
     ds_median: 8.
-    ds_err_neg: 7.9
-    ds_err_pos: 2.
+    ds_err_neg: 5
+    ds_err_pos: 8.
+    source_mag_err: 0.07
+    source_star: giant
+    theta_star: 8.83
+    theta_star_sig: 11.49
     mu_ra:   -4.60516696452571
     mu_ra_sig: 0.05998582
     mu_dec: -5.56086622451114
@@ -17,12 +21,12 @@ parameters:
 options:
     ds_weight: True
     mus_weight: False
-    n_iter: 100000
+    n_iter: 1000000
     masspower: -0.3, 0.08,
                -1.3, 0.5,
                -2.3, 150.
     filter: G
-    f_source: True
+    f_source: False
 output:
     samples:
         samples_filename: examples/samples/ulens-025.npy

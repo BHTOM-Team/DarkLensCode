@@ -11,4 +11,4 @@ pandas~=2.1.4
 pyerfa~=2.0.1.1
 pyyaml~=6.0.1
 jupyterlab~=4.0.10
-git+https://github.com/cgobat/asymmetric_uncertainty.git
+asymmetric_uncertainty @ git+https://github.com/cgobat/asymmetric_uncertainty.git
