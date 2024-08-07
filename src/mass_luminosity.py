@@ -428,25 +428,25 @@ def get_giant_obs_mag_g(radius: float, err_radius: float, dist: float, extinctio
         # print("WARN Mass exceeds Mamajek range ", mass, dist, extinction)
         rad_in_m = R_s[-1] * R_sun.value # in meters to work with Stefan-Boltzmann constant
         bol_lum = 4 * np.pi * rad_in_m**2 * sigma_SB * T_eff**4 / L_sun.value
-        err_bol_lum = ((4 * np.pi * 2 * rad_in_m * sigma_SB* T_eff**4 * err_radius) +
-                       (4 * np.pi * rad_in_m**2 * sigma_SB * 4 * T_eff**3 * err_Teff))
+        err_bol_lum = np.sqrt((4 * np.pi * 2 * rad_in_m * sigma_SB* T_eff**4 * err_radius)**2 +
+                       (4 * np.pi * rad_in_m**2 * sigma_SB * 4 * T_eff**3 * err_Teff)**2)
         err_bol_lum = err_bol_lum / L_sun.value
     elif (radius<9.25):
         # print("WARN Mass exceeds Mamajek range ", mass, dist, extinction)
         rad_in_m = R_s[0] * R_sun.value # in meters to work with Stefan-Boltzmann constant
         bol_lum = 4 * np.pi * rad_in_m ** 2 * sigma_SB * T_eff ** 4 / L_sun.value
-        err_bol_lum = ((4 * np.pi * 2 * rad_in_m * sigma_SB * T_eff ** 4 * err_radius) +
-                   (4 * np.pi * rad_in_m ** 2 * sigma_SB * 4 * T_eff ** 3 * err_Teff))
+        err_bol_lum = np.sqrt((4 * np.pi * 2 * rad_in_m * sigma_SB * T_eff ** 4 * err_radius)**2 +
+                   (4 * np.pi * rad_in_m ** 2 * sigma_SB * 4 * T_eff ** 3 * err_Teff)**2)
         err_bol_lum = err_bol_lum / L_sun.value
     else:
         rad_in_m = radius * R_sun.value # in meters to work with Stefan-Boltzmann constant
         bol_lum = 4 * np.pi * rad_in_m**2 * sigma_SB * T_eff**4 / L_sun.value
-        err_bol_lum = ((4 * np.pi * 2 * rad_in_m * sigma_SB * T_eff ** 4 * err_radius) +
-                   (4 * np.pi * rad_in_m ** 2 * sigma_SB * 4 * T_eff ** 3 * err_Teff))
+        err_bol_lum = np.sqrt((4 * np.pi * 2 * rad_in_m * sigma_SB * T_eff ** 4 * err_radius)**2 +
+                   (4 * np.pi * rad_in_m ** 2 * sigma_SB * 4 * T_eff ** 3 * err_Teff)**2)
         err_bol_lum = err_bol_lum / L_sun.value
 
     abs_mag = 4.74 - (2.5 * np.log10(bol_lum)) - BC
-    err_abs_mag = (2.5 * np.log(10) * err_bol_lum/ bol_lum) + err_BC
+    err_abs_mag = np.sqrt((2.5 * np.log(10) * err_bol_lum/ bol_lum)**2 + err_BC**2)
 
     mag = abs_mag + 5 * np.log10(dist * 1000.) - 5 + extinction
     err_mag = err_abs_mag
